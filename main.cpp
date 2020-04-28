@@ -131,7 +131,7 @@ int main()
 
 		counter++;
 
-		cout << counter << endl;
+		//cout << counter << endl;
 
 		backSub->apply(frame, mask);
 
@@ -152,7 +152,7 @@ int main()
 
 			vector<bool> displayed(hierarchy.size());
 
-			/// Get outer contours
+			/// Remove all child contours
 			for (int i = 0; i < hierarchy.size(); i++)
 			{
 				int current = hierarchy[i][3];
@@ -223,14 +223,16 @@ int main()
 			//	return el.size() < 100;
 			//}), contours.end());
 
+			std::sort(contours.begin(), contours.end(), [&contours](const vector<cv::Point>& a, const vector<cv::Point>& b) {
+				return a.size() > b.size();
+			});
+
 			auto new_centroids = getCentroids(contours);
 			vector<bool> used(new_centroids.size());
 			int removeAfter = -1;
 
-			for (int i = 0; i < objects.size(); i++)
-			{
-				Object& el = objects[i];
-				
+			for (auto &el: objects)
+			{				
 				Point closest(-1, -1);
 				double dist = 1000000;
 				int ind = -1;
@@ -250,7 +252,8 @@ int main()
 				/// There is no new point shall remove old ones
 				if (ind == -1)
 				{
-					removeAfter = i;
+					removeAfter = &el - &*objects.begin();
+					cout << removeAfter << endl;
 					break;
 				}
 
