@@ -12,9 +12,11 @@
 
 // std incldes
 #include <iostream>
+#include <chrono>
 
 using namespace cv;
 using namespace std;
+using namespace std::chrono;
 
 RNG rng(12345);
 
@@ -49,154 +51,162 @@ vector<Point> getCentroids(const vector<vector<Point>>& contours)
 	return output;
 }
 
-namespace
+inline void removeChildContours(const vector<Vec4i>& hierarchy, vector<vector<Point>> &contours)
 {
-	Mat src, src_gray;
-	Mat dst, detected_edges;
-	int lowThreshold = 0;
-	const int max_lowThreshold = 100;
-	const int ratio = 3;
-	const int kernel_size = 3;
-	const char* window_name = "Edge Map";
+	vector<vector<Point>> tmpContours;
+	vector<bool> displayed(hierarchy.size());
 
-	static void CannyThreshold(int, void*)
+	/// Remove all child contours
+	for (int i = 0; i < hierarchy.size(); i++)
 	{
-		blur(src_gray, detected_edges, Size(3, 3));
-		cout << lowThreshold << endl;
-		Canny(detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size);
-		dst = Scalar::all(0);
-		src.copyTo(dst, detected_edges);
-		imshow(window_name, dst);
+		int current = hierarchy[i][3];
+
+		// shall display and mark as displayed
+		if (current == -1)
+		{
+			tmpContours.push_back(contours[i]);
+			displayed[i] = true;
+			continue;
+		}
+
+		/// Can be optimized by marking as displayed while ascending
+		while (hierarchy[current][3] != -1)
+			current = hierarchy[current][3];
+
+		if (!displayed[current])
+		{
+			tmpContours.push_back(contours[current]);
+			displayed[current] = true;
+		}
 	}
+
+	// maybe make contours as list or use erase-remove idiom
+	contours = tmpContours;
+}
+
+inline void removeBySize(vector<vector<Point>> &contours)
+{
+	contours.erase(std::remove_if(contours.begin(), contours.end(), [](const vector<Point>& el) ->bool {
+		Point centroid;
+		for (auto p : el)
+			centroid += p;
+
+		centroid.x = centroid.x / el.size();
+		centroid.y = centroid.y / el.size();
+
+		for (auto p : el)
+			if (math::euclidian(centroid, p) > 5)
+				return false;
+
+		return true;
+	}), contours.end());
+}
+
+void updateObjects(vector<Object>& objects, const vector<vector<Point>>& contours)
+{
+	auto newCentroids = getCentroids(contours);
+	vector<bool> used(newCentroids.size());
+	int removeAfter = -1;
+
+	for (auto &el : objects)
+	{
+		Point closest;
+		int ind = -1;
+		double dist = numeric_limits<double>::max();
+
+		for (int j = 0; j < newCentroids.size(); j++)
+		{
+			double tmp = math::euclidian(newCentroids[j], el.location_);
+			if (!used[j] && tmp < dist)
+			{
+				closest = el.location_;
+				dist = tmp;
+				ind = j;
+			}
+		}
+
+		/// Then we shall remove that point
+		/// There is no new point shall remove old ones
+		if (ind == -1)
+		{
+			removeAfter = &el - &*objects.begin();
+			break;
+		}
+
+		/// Mark as used
+		used[ind] = true;
+		/// Update location location
+		el.location_ = newCentroids[ind];
+	}
+
+	objects.erase(remove_if(objects.begin(), objects.end(), [&removeAfter, &objects](const Object& value) {
+		if (removeAfter == -1)
+			return false;
+
+		return (&value - &*objects.begin()) >= removeAfter;
+	}), objects.end());
+
+	/// Add new objects
+	for (int i = 0; i < used.size(); i++)
+		if (!used[i])
+			objects.emplace_back(newCentroids[i]);
 }
 
 int main()
 {
 	//auto backSub = createBackgroundSubtractorMOG2(500, 200, true);
-
 	auto backSub = createBackgroundSubtractorKNN(500, 2500/*2500*/, true);
-
-	//{
-	//	VideoCapture cap("./doorWay.mp4");
-	//	//VideoCapture cap("./fella.mp4");
-	//	if (!cap.isOpened())
-	//	{
-	//		cout << "Couldn't open video";
-	//		return 1;
-	//	}
-
-	//	int counter = 0;
-	//	Mat frame;
-	//	while (counter != 530)
-	//	{
-	//		counter++;
-	//		cap >> frame;
-	//	}
-
-	//	cap.release();
-
-	//	Mat mask;
-	//	for (int i = 0; i < 500; i++)
-	//		backSub->apply(frame, mask);
-	//	
-	//}
 
 	VideoCapture cap("./doorWay.mp4");
 	//VideoCapture cap("./fella.mp4");
 	if (!cap.isOpened())
 	{
-		cout << "Couldn't open video";
+		cout << "Couldn't open video" << endl;
 		return 1;
 	}
 
-	// gets first frame to omparison
-	{
-		Mat frame0;
-		cap >> frame0;
-		//imwrite("./framme0.jpg", frame0);
-	}
-
+	int counter = 0;
+	Mat frame, mask;
 	vector<Object> objects;
 
-	//auto backSub = createBackgroundSubtractorKNN(500, 3200/*2500*/, true);
-
-	int counter = 0;
 	while (cap.isOpened())
 	{
-		Mat frame, mask;
 		cap >> frame;
 
 		if (frame.empty())
 			break;
 
-		counter++;
-
-		//cout << counter << endl;
-
-		backSub->apply(frame, mask);
-
-		// display
 		{
+			auto start = high_resolution_clock::now();
+			backSub->apply(frame, mask);
+
+			auto stop = high_resolution_clock::now();
+			auto duration = duration_cast<microseconds>(stop - start);
+
+			cout << "Apply time: "
+				<< duration.count() << " microseconds" << endl;
+		}
+
+		/// Process
+		{
+			auto start = high_resolution_clock::now();
+
 			Mat canny_output;
-			vector<vector<Point>> contours;
-			vector<vector<Point>> parentContours;
 			vector<Vec4i> hierarchy;
+			vector<vector<Point>> contours;
 
 			/// Detect edges using canny
 			cv::Canny(mask, canny_output, 250, 900, 3);
-			//cv::Canny(mask, canny_output, 300, 980, 3);
 			/// Find contours
 			cv::findContours(canny_output, contours, hierarchy, RETR_TREE, 1, Point(0, 0));
-
-			Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
-
-			vector<bool> displayed(hierarchy.size());
-
-			/// Remove all child contours
-			for (int i = 0; i < hierarchy.size(); i++)
-			{
-				int current = hierarchy[i][3];
-
-				// shall display and mark as displayed
-				if (current == -1)
-				{
-					parentContours.push_back(contours[i]);
-					displayed[i] = true;
-					continue;
-				}
-
-				while (hierarchy[current][3] != -1)
-					current = hierarchy[current][3];
-
-				if (!displayed[current])
-				{
-					parentContours.push_back(contours[current]);
-					displayed[current] = true;
-				}
-			}
-
+			/// Leave only outer contours
+			removeChildContours(hierarchy, contours);
 			/// Exclude countours whose size is less than 100
-			parentContours.erase(std::remove_if(parentContours.begin(), parentContours.end(), [](const vector<Point>& el) ->bool {
-				/// By number of pixels
-				// return el.size() < 75;
-				
-				Point centroid;
-				for (auto p : el)
-					centroid += p;
-
-				centroid.x = centroid.x / el.size();
-				centroid.y = centroid.y / el.size();
-
-				for (auto p : el)
-					if (math::euclidian(centroid, p) > 5)
-						return false;
-
-				return true;
-			}), parentContours.end());
+			removeBySize(contours);
 
 			/// Init vector of nodes for DBSCAN
 			vector<node*> v;
-			for (auto &el : parentContours)
+			for (auto &el : contours)
 			{
 				for (Point &p : el)
 				{
@@ -208,8 +218,8 @@ int main()
 				}
 			}
 
-			DBSCAN db(v);
 			/// Get result of dbscam
+			DBSCAN db(v);
 			db.perform();
 
 			contours.clear();
@@ -219,64 +229,23 @@ int main()
 			for (int i = 0; i < v.size(); i++)
 				contours[v[i]->cluster].emplace_back(v[i]->c[0], v[i]->c[1]);
 
-			//contours.erase(std::remove_if(contours.begin(), contours.end(), [](const vector<Point>& el) -> bool {
-			//	return el.size() < 100;
-			//}), contours.end());
-
+			/// Sort so first contour is the largest
 			std::sort(contours.begin(), contours.end(), [&contours](const vector<cv::Point>& a, const vector<cv::Point>& b) {
 				return a.size() > b.size();
 			});
 
-			auto new_centroids = getCentroids(contours);
-			vector<bool> used(new_centroids.size());
-			int removeAfter = -1;
+			/// Update objects location or add new
+			updateObjects(objects, contours);
 
-			for (auto &el: objects)
-			{				
-				Point closest(-1, -1);
-				double dist = 1000000;
-				int ind = -1;
+			auto stop = high_resolution_clock::now();
+			auto duration = duration_cast<microseconds>(stop - start);
 
-				for (int j = 0; j < new_centroids.size(); j++)
-				{
-					double tmp = math::euclidian(new_centroids[j], el.location_);
-					if (!used[j] && tmp < dist)
-					{
-						closest = el.location_;
-						dist = tmp;
-						ind = j;
-					}
-				}
+			cout << "Process time: "
+				<< duration.count() << " microseconds" << endl;
 
-				/// Then we shall remove that point
-				/// There is no new point shall remove old ones
-				if (ind == -1)
-				{
-					removeAfter = &el - &*objects.begin();
-					cout << removeAfter << endl;
-					break;
-				}
-
-				/// Mark as used
-				used[ind] = true;
-				/// Update location location
-				el.location_ = new_centroids[ind];
-			}
-
-			objects.erase(remove_if(objects.begin(), objects.end(), [&removeAfter, &objects](const Object& value) {
-				if (removeAfter == -1)
-					return false;
-
-				return (&value - &*objects.begin()) >= removeAfter;
-			}), objects.end());
-
-			/// Add new objects
-			for (int i = 0; i < used.size(); i++)
-				if (!used[i])
-					objects.emplace_back(new_centroids[i]);
+			Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
 
 			showContours(drawing, contours, hierarchy, objects);
-			//showContours(drawing, parentContours, hierarchy);
 
 			for (auto el : v)
 				delete el;
@@ -290,6 +259,8 @@ int main()
 		imshow("Frame", frame);
 		//imshow("Mask", mask);
 		//imshow("Back", back);
+
+		counter++;
 
 		char c = (char)waitKey(25);
 		if (c == 27)

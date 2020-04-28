@@ -45,7 +45,7 @@ typedef std::vector<std::vector<std::vector<edge*>>> Clusters;
 class DBSCAN 
 {
 public:
-
+	
 	DBSCAN(const std::vector<node*>&);
 	~DBSCAN();
 
@@ -54,6 +54,7 @@ public:
 	uint32_t numberOfClusters() const;
 
 private:
+	// maybe rewrite using dfs
 	void clustering(node*);
 
 	// vertices of graph
