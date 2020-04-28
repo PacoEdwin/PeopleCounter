@@ -20,12 +20,12 @@ using namespace std::chrono;
 
 RNG rng(12345);
 
-void processFrame(Mat& frame)
+inline void processFrame(Mat& frame)
 {
 	cv::line(frame, Point(frame.cols / 2, 0), Point(frame.cols / 2, frame.rows), Scalar(0, 255, 0), 2);
 }
 
-void showContours(Mat& output, const  vector<vector<Point>>& contours, const vector<Vec4i>& hierarchy, const vector<Object>& objects, string name = "Contours")
+inline void showContours(Mat& output, const  vector<vector<Point>>& contours, const vector<Vec4i>& hierarchy, const vector<Object>& objects, string name = "Contours")
 {
 	for (int i = 0; i < contours.size(); i++)
 		drawContours(output, contours, i, objects[i].color_, 2, 8, hierarchy, 0, Point());
@@ -33,7 +33,7 @@ void showContours(Mat& output, const  vector<vector<Point>>& contours, const vec
 	imshow(name, output);
 }
 
-vector<Point> getCentroids(const vector<vector<Point>>& contours)
+inline vector<Point> getCentroids(const vector<vector<Point>>& contours)
 {
 	vector<Point> output;
 
@@ -102,7 +102,7 @@ inline void removeBySize(vector<vector<Point>> &contours)
 	}), contours.end());
 }
 
-void updateObjects(vector<Object>& objects, const vector<vector<Point>>& contours)
+inline void updateObjects(vector<Object>& objects, const vector<vector<Point>>& contours)
 {
 	auto newCentroids = getCentroids(contours);
 	vector<bool> used(newCentroids.size());

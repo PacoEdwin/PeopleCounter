@@ -18,8 +18,6 @@ namespace math
 
 	inline double euclidian(cv::Point p1, cv::Point p2)
 	{
-		//return std::sqrt((x1 - x0)*(x1 - x0) + (y1 - y0)*(y1 - y0));
-		//return std::sqrt((p1.x - p2.x)*(p1.x - p2.x) + (p1.y - p2.y)*(p1.y - p2.y));
 		return euclidian(p1.x, p1.y, p2.x, p2.y);
 	}
 }
@@ -56,6 +54,7 @@ public:
 private:
 	// maybe rewrite using dfs
 	void clustering(node*);
+	void clusteringBFS(node*);
 
 	// vertices of graph
 	int neighborhood_;

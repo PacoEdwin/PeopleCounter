@@ -1,4 +1,8 @@
+// projects includes
 #include "DBSCAN.h"
+
+// std includes
+#include <queue>
 
 DBSCAN::DBSCAN(const std::vector<node*>& data):
 	v_(data), 
@@ -6,14 +10,50 @@ DBSCAN::DBSCAN(const std::vector<node*>& data):
 
 void DBSCAN::perform()
 {
-	for (auto &el: v_)
+	auto it = v_.begin();
+	while(it != v_.end())
 	{
+		auto el = *it;
 		if (el->color == "white")
 		{
+			el->cluster = graphs_.size();
 			graphs_.resize(graphs_.size() + 1);
-			clustering(el);
+			//clustering(el);
+			clusteringBFS(el);
+
+			auto jt = it;
+			auto whiteIt = v_.end();
+			bool check = false;
+			while (jt != v_.end())
+			{
+				if ((*jt)->color != "white")
+					jt = v_.erase(jt);
+				else
+				{
+					if (!check)
+						whiteIt = jt, check = true;
+
+					jt++;
+				}
+			}
+
+			if (check)
+				it = whiteIt;
+			else
+				it = v_.end();
 		}
 	}
+
+	//for (auto &el: v_)
+	//{
+	//	if (el->color == "white")
+	//	{
+	//		el->cluster = graphs_.size();
+	//		graphs_.resize(graphs_.size() + 1);
+	//		//clusteringBFS(el);
+	//		clustering(el);
+	//	}
+	//}
 
 	numOfClusters_ = graphs_.size();
 }
@@ -37,6 +77,64 @@ Clusters DBSCAN::result()
 uint32_t DBSCAN::numberOfClusters() const
 {
 	return numOfClusters_;
+}
+
+void DBSCAN::clusteringBFS(node* s)
+{
+	std::queue<node*> q;
+	q.push(s);
+	s->color = "gray";
+
+	while (!q.empty())
+	{
+		auto u = q.front();
+		q.pop();
+
+		for (auto& el: v_)
+		{
+			double dist = math::euclidian(el->c[0], el->c[1], u->c[0], u->c[1]);
+
+			// don't init some isolated shit
+			if (dist < neighborhood_ && el->color == "white" && el != u)
+			{
+				edge* r = new edge;
+				edge* w = new edge;
+
+				// init edges
+				{
+					el->ancestor = u;
+					r->link = el;
+					w->link = u;
+					r->w = dist;
+					w->w = dist;
+					r->link->cluster = w->link->cluster = u->cluster;
+				}
+
+				if (graphs_[graphs_.size() - 1].size() == 0)
+				{
+					w->link->pos = 0;
+					r->link->pos = 1;
+					graphs_[graphs_.size() - 1].resize(2);
+					graphs_[graphs_.size() - 1][w->link->pos].push_back(r);
+					graphs_[graphs_.size() - 1][r->link->pos].push_back(w);
+				}
+				else
+				{
+					// add edges
+					graphs_[u->cluster][u->pos].push_back(r);
+					graphs_[u->cluster].resize(graphs_[u->cluster].size() + 1);
+					el->pos = graphs_[u->cluster].size() - 1;
+					graphs_[u->cluster][el->pos].push_back(w);
+				}
+
+				q.push(el);
+
+				el->color = "gray";
+			}
+
+			u->color = "black";
+		}
+	}
 }
 
 // kinda dfs
@@ -65,35 +163,29 @@ void DBSCAN::clustering(node* u)
 				w->link = u;
 				r->w = dist;
 				w->w = dist;
+				r->link->cluster = u->cluster;
 			}
 
 			if (graphs_[graphs_.size() - 1].size() == 0)
 			{
-				r->link->cluster = w->link->cluster = graphs_.size() - 1;
 				w->link->pos = 0;
 				r->link->pos = 1;
 				graphs_[graphs_.size() - 1].resize(2);
 				graphs_[graphs_.size() - 1][w->link->pos].push_back(r);
 				graphs_[graphs_.size() - 1][r->link->pos].push_back(w);
-				clustering(v_[i]);
 			}
 			else
 			{
-				r->link->cluster = u->cluster;
+				// add edges
 				graphs_[u->cluster][u->pos].push_back(r);
-
-				// add back edge
 				graphs_[u->cluster].resize(graphs_[u->cluster].size() + 1);
 				v_[i]->pos = graphs_[u->cluster].size() - 1;
 				graphs_[u->cluster][v_[i]->pos].push_back(w);
-
-				clustering(v_[i]);
 			}
+
+			clustering(v_[i]);
 		}
 	}
-
-	if (!hasNeighbor)
-		u->cluster = graphs_.size() - 1;
 
 	u->color = "black";
 }
