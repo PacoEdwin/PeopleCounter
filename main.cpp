@@ -1,7 +1,7 @@
 // rpoject includes
 #include "DBSCAN.h"
 #include "Object.h"
-
+#include "dbscanbyimage.h"
 // opencv includes
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -210,14 +210,13 @@ int main()
 				for (Point &p : el)
 				{
 					node* u = new node;
-					u->c.push_back(p.x);
-					u->c.push_back(p.y);
+					u->c = p;
 
 					v.push_back(u);
 				}
 			}
 			/// Get result of dbscam
-			DBSCAN db(v);
+			DBSCANByImage db(canny_output, v);
 			db.perform();
 
 			contours.clear();
@@ -225,7 +224,12 @@ int main()
 
 			/// Fill contours from clusters
 			for (int i = 0; i < v.size(); i++)
-				contours[v[i]->cluster].emplace_back(v[i]->c[0], v[i]->c[1]);
+			{
+				contours[v[i]->cluster].emplace_back(v[i]->c);
+				//for (int j = 0; j < v.size(); j++)
+				//	if (math::euclidian(v[i]->c, v[j]->c) < 10 && v[i]->cluster != v[j]->cluster)
+				//		cout << "lol" << endl;
+			}
 
 			/// Sort so first contour is the largest
 			std::sort(contours.begin(), contours.end(), [&contours](const vector<cv::Point>& a, const vector<cv::Point>& b) {

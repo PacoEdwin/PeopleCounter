@@ -65,10 +65,10 @@ void DBSCAN::clusteringBFS(node* s)
 			// don't init some isolated shit
 			if (el->color == "white")
 			{
-				double dist = math::euclidian(el->c[0], el->c[1], u->c[0], u->c[1]);
+				double dist = math::euclidian(el->c, u->c);
 				if (dist < neighborhood_ && el != u)
 				{
-					double dist = math::euclidian(el->c[0], el->c[1], u->c[0], u->c[1]);
+					double dist = math::euclidian(el->c, u->c);
 
 					edge* r = new edge;
 					edge* w = new edge;
@@ -123,7 +123,7 @@ void DBSCAN::clustering(node* u)
 
 	for (int i = 0; i < v_.size(); i++)
 	{
-		double dist = math::euclidian(v_[i]->c[0], v_[i]->c[1], u->c[0], u->c[1]);
+		double dist = math::euclidian(v_[i]->c, u->c);
 
 		// don't init some isolated shit
 		if (v_[i]->color == "white" && dist < neighborhood_ && v_[i] != u)
