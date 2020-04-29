@@ -202,8 +202,7 @@ int main()
 			/// Leave only outer contours
 			removeChildContours(hierarchy, contours);
 			/// Exclude countours whose size is less than 100
-			removeBySize(contours);
-
+			removeBySize(contours);			
 			/// Init vector of nodes for DBSCAN
 			vector<node*> v;
 			for (auto &el : contours)
@@ -217,7 +216,6 @@ int main()
 					v.push_back(u);
 				}
 			}
-
 			/// Get result of dbscam
 			DBSCAN db(v);
 			db.perform();
