@@ -64,3 +64,4 @@ private:
 	std::vector<node*> v_;
 	std::vector<std::vector<std::vector<edge*>>> graphs_;
 };
+

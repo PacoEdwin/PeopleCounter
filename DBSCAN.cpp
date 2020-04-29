@@ -17,7 +17,7 @@ void DBSCAN::perform()
 		{
 			el->cluster = graphs_.size();
 			graphs_.resize(graphs_.size() + 1);
-			v_.erase(v_.begin());
+			//v_.erase(v_.begin());
 			clusteringBFS(el);
 		}
 	}
@@ -57,55 +57,60 @@ void DBSCAN::clusteringBFS(node* s)
 		auto u = q.front();
 		q.pop();
 
-		auto it = v_.begin();
-		while(it != v_.end())
+		int i = 0;
+		int j = v_.size();
+		while(i != j)
 		{
-			auto &el = *it;
-			double dist = math::euclidian(el->c[0], el->c[1], u->c[0], u->c[1]);
-
+			auto &el = v_[i];
 			// don't init some isolated shit
-			if (dist < neighborhood_ && el->color == "white" && el != u)
+			if (el->color == "white")
 			{
-				edge* r = new edge;
-				edge* w = new edge;
+				double dist = math::euclidian(el->c[0], el->c[1], u->c[0], u->c[1]);
+				if (dist < neighborhood_ && el != u)
+				{
+					double dist = math::euclidian(el->c[0], el->c[1], u->c[0], u->c[1]);
 
-				// init edges
-				{
-					el->ancestor = u;
-					r->link = el;
-					w->link = u;
-					r->w = dist;
-					w->w = dist;
-					r->link->cluster = w->link->cluster = u->cluster;
-				}
+					edge* r = new edge;
+					edge* w = new edge;
 
-				if (graphs_[graphs_.size() - 1].size() == 0)
-				{
-					w->link->pos = 0;
-					r->link->pos = 1;
-					graphs_[graphs_.size() - 1].resize(2);
-					graphs_[graphs_.size() - 1][w->link->pos].push_back(r);
-					graphs_[graphs_.size() - 1][r->link->pos].push_back(w);
-				}
-				else
-				{
-					// add edges
+					// init edges
+					{
+						el->ancestor = u;
+						r->link = el;
+						w->link = u;
+						r->w = dist;
+						w->w = dist;
+						r->link->cluster = w->link->cluster = u->cluster;
+					}
+
+					if (graphs_[graphs_.size() - 1].size() == 0)
+					{
+						graphs_[graphs_.size() - 1].push_back(std::vector<edge*>());
+						w->link->pos = 0;
+					}
+
 					graphs_[u->cluster][u->pos].push_back(r);
-					graphs_[u->cluster].resize(graphs_[u->cluster].size() + 1);
+					graphs_[u->cluster].push_back(std::vector<edge*>());
 					el->pos = graphs_[u->cluster].size() - 1;
 					graphs_[u->cluster][el->pos].push_back(w);
+
+					q.push(el);
+
+					el->color = "gray";
 				}
-
-				q.push(el);
-
-				el->color = "gray";
-				it = v_.erase(it);
+				else
+					i++;
 			}
 			else
-				it++;
+			{
+				j--;
+				std::swap(v_[i], v_[j]);
+			}
 
 			u->color = "black";
 		}
+
+		v_.resize(j);
 	}
 }
 
