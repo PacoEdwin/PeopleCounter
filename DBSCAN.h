@@ -5,6 +5,7 @@
 #include <math.h>
 #include <vector>
 #include <string>
+#include <list>
 
 // cv includes
 #include <opencv2/core/types.hpp>

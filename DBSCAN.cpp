@@ -10,50 +10,17 @@ DBSCAN::DBSCAN(const std::vector<node*>& data):
 
 void DBSCAN::perform()
 {
-	auto it = v_.begin();
-	while(it != v_.end())
+	while(!v_.empty())
 	{
-		auto el = *it;
+		auto el = v_[0];
 		if (el->color == "white")
 		{
 			el->cluster = graphs_.size();
 			graphs_.resize(graphs_.size() + 1);
-			//clustering(el);
+			v_.erase(v_.begin());
 			clusteringBFS(el);
-
-			auto jt = it;
-			auto whiteIt = v_.end();
-			bool check = false;
-			while (jt != v_.end())
-			{
-				if ((*jt)->color != "white")
-					jt = v_.erase(jt);
-				else
-				{
-					if (!check)
-						whiteIt = jt, check = true;
-
-					jt++;
-				}
-			}
-
-			if (check)
-				it = whiteIt;
-			else
-				it = v_.end();
 		}
 	}
-
-	//for (auto &el: v_)
-	//{
-	//	if (el->color == "white")
-	//	{
-	//		el->cluster = graphs_.size();
-	//		graphs_.resize(graphs_.size() + 1);
-	//		//clusteringBFS(el);
-	//		clustering(el);
-	//	}
-	//}
 
 	numOfClusters_ = graphs_.size();
 }
@@ -90,8 +57,10 @@ void DBSCAN::clusteringBFS(node* s)
 		auto u = q.front();
 		q.pop();
 
-		for (auto& el: v_)
+		auto it = v_.begin();
+		while(it != v_.end())
 		{
+			auto &el = *it;
 			double dist = math::euclidian(el->c[0], el->c[1], u->c[0], u->c[1]);
 
 			// don't init some isolated shit
@@ -130,7 +99,10 @@ void DBSCAN::clusteringBFS(node* s)
 				q.push(el);
 
 				el->color = "gray";
+				it = v_.erase(it);
 			}
+			else
+				it++;
 
 			u->color = "black";
 		}
