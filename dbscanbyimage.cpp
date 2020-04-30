@@ -12,14 +12,19 @@ DBSCANByImage::DBSCANByImage(const cv::Mat& img, const std::vector<node*>& data)
 {
 	m_ = decltype(m_)(img_.rows, std::vector<node*>(img_.cols, nullptr));
 	for (auto el : v_)
+	{
+		if (m_[el->c.y][el->c.x])
+			int sss = 1;
+
 		m_[el->c.y][el->c.x] = el;
+	}
 }
 
 DBSCANByImage::~DBSCANByImage()
 {
 	for (auto& cluster : graphs_)
 		for (auto& edges : cluster)
-			for (auto& el : edges)
+			for (auto el : edges)
 				delete el;
 }
 
@@ -30,7 +35,8 @@ void DBSCANByImage::perform()
 		if (el->color == "white")
 		{
 			el->cluster = graphs_.size();
-			graphs_.push_back(std::vector<std::vector<edge*>>());
+			graphs_.resize(graphs_.size() + 1);
+			//graphs_.push_back(std::vector<std::vector<edge*>>());
 			clustering(el);
 		}
 	}
@@ -51,8 +57,8 @@ std::vector<node*> DBSCANByImage::getNeighbors(node* v) const
 	int x = std::max(v->c.x - neighborhood_, 0);
 	int y = std::max(v->c.y - neighborhood_, 0);
 
-	int x_m = std::min(img_.cols, v->c.x + neighborhood_);
-	int y_m = std::min(img_.rows, v->c.y + neighborhood_);
+	int x_m = std::min(img_.cols - 1, v->c.x + neighborhood_);
+	int y_m = std::min(img_.rows - 1, v->c.y + neighborhood_);
 
 	//for (; y < y_m; y++)
 	//{
@@ -76,29 +82,53 @@ std::vector<node*> DBSCANByImage::getNeighbors(node* v) const
 	//	}
 	//}
 
-	for (int j = y; j < y_m; j++)
-	{
-		for (int i = x ; i < x_m; i++)
-		{
-			//if (i == v->c.x && j == v->c.y)
-			//	std::cout << "sssssssss" << std::endl;
+	int counter = 0;
 
-			if (m_[j][i] && m_[j][i]->color == "white" && !(i == v->c.x && j == v->c.y))
+	for (int j = y; j <= y_m; j++)
+	{
+		for (int i = x ; i <= x_m; i++)
+		{
+
+			if (m_[j][i] && m_[j][i]->color == "white" && m_[j][i] != v)
 			{
 				output.push_back(m_[j][i]);
-				//std::cout << "xx" << std::endl;
 			}
 
-			//if (m_[j][i])
-			//	std::cout << "ssxz" << std::endl;
-
-			//std::cout << (int)img_.at<uchar>(x, y) << std::endl;
+			counter++;
 		}
 	}
 
-	//std::cout << "emd" << std::endl;
+	//std::cout << counter << std::endl;
 
-	return output;
+	decltype(output) a;
+	for (auto el : v_)
+		if (std::abs(el->c.x - v->c.x) <= neighborhood_ && std::abs(el->c.y - v->c.y) <= neighborhood_ && el != v && el->color == "white")
+			a.push_back(el);
+	
+	a.erase(remove_if(a.begin(), a.end(), [&output](node* value) {
+		for (auto el : output)
+		{
+			if (value != el && *value == *el)
+				int trt = 1;
+
+			if (*value == *el)
+				return true;
+		}
+
+		return false;
+	}), a.end());
+
+	for (auto el : a)
+		std::cout << el->c << " " << (m_[el->c.y][el->c.x]? "WTF": "trtr") << " ";
+
+	std::cout << std::endl;
+
+	auto sssss = 1;
+
+	if (output.size() != a.size())
+		auto ss = 1;
+
+	return a;
 }
 
 void DBSCANByImage::clustering(node* s)
@@ -113,6 +143,7 @@ void DBSCANByImage::clustering(node* s)
 		q.pop();
 
 		auto neighbors = getNeighbors(u);
+
 		for(auto el: neighbors)
 		{
 			//// don't init some isolated shit
@@ -152,6 +183,9 @@ void DBSCANByImage::clustering(node* s)
 
 		u->color = "black";
 	}
+
+	if (graphs_.back().size() > 100)
+		int sss = -1;
 
 	int i = 0;
 }

@@ -13,6 +13,7 @@
 // std incldes
 #include <iostream>
 #include <chrono>
+#include <unordered_map>
 
 using namespace cv;
 using namespace std;
@@ -205,6 +206,8 @@ int main()
 			removeBySize(contours);			
 			/// Init vector of nodes for DBSCAN
 			vector<node*> v;
+			unordered_map<int, node*> h;
+
 			for (auto &el : contours)
 			{
 				for (Point &p : el)
@@ -212,11 +215,26 @@ int main()
 					node* u = new node;
 					u->c = p;
 
-					v.push_back(u);
+					h[p.y*canny_output.rows + p.x] = u;
 				}
 			}
+
+
+			for (auto it = h.begin(); it != h.end(); it++)
+				v.push_back(it->second);
+			//for (auto &el : contours)
+			//{
+			//	for (Point &p : el)
+			//	{
+			//		node* u = new node;
+			//		u->c = p;
+
+			//		v.push_back(u);
+			//	}
+			//}
 			/// Get result of dbscam
 			DBSCANByImage db(canny_output, v);
+			//DBSCAN db(v);
 			db.perform();
 
 			contours.clear();

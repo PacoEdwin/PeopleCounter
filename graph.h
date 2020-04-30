@@ -28,6 +28,10 @@ struct node
 	std::string color = "white";
 
 	node* ancestor = nullptr;
+
+	bool operator==(const node& rhs) {
+		return c == rhs.c;
+	}
 };
 
 struct edge

@@ -66,9 +66,8 @@ void DBSCAN::clusteringBFS(node* s)
 			if (el->color == "white")
 			{
 				double dist = math::euclidian(el->c, u->c);
-				if (dist < neighborhood_ && el != u)
+				if (std::abs(el->c.x - u->c.x) < neighborhood_ && std::abs(el->c.y - u->c.y) < neighborhood_ && el != u)
 				{
-					double dist = math::euclidian(el->c, u->c);
 
 					edge* r = new edge;
 					edge* w = new edge;
