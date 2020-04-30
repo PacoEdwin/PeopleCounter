@@ -1,4 +1,4 @@
-// rpoject includes
+﻿// rpoject includes
 #include "DBSCAN.h"
 #include "Object.h"
 #include "dbscanbyimage.h"
@@ -177,21 +177,10 @@ int main()
 		if (frame.empty())
 			break;
 
-		{
-			auto start = high_resolution_clock::now();
-			backSub->apply(frame, mask);
-
-			auto stop = high_resolution_clock::now();
-			auto duration = duration_cast<microseconds>(stop - start);
-
-			cout << "Apply time: "
-				<< duration.count() << " microseconds" << endl;
-		}
+		backSub->apply(frame, mask);
 
 		/// Process
 		{
-			auto start = high_resolution_clock::now();
-
 			Mat canny_output;
 			vector<Vec4i> hierarchy;
 			vector<vector<Point>> contours;
@@ -219,19 +208,10 @@ int main()
 				}
 			}
 
-
+			/// To get rid of duplicate points
 			for (auto it = h.begin(); it != h.end(); it++)
 				v.push_back(it->second);
-			//for (auto &el : contours)
-			//{
-			//	for (Point &p : el)
-			//	{
-			//		node* u = new node;
-			//		u->c = p;
-
-			//		v.push_back(u);
-			//	}
-			//}
+			
 			/// Get result of dbscam
 			DBSCANByImage db(canny_output, v);
 			//DBSCAN db(v);
@@ -242,12 +222,7 @@ int main()
 
 			/// Fill contours from clusters
 			for (int i = 0; i < v.size(); i++)
-			{
 				contours[v[i]->cluster].emplace_back(v[i]->c);
-				//for (int j = 0; j < v.size(); j++)
-				//	if (math::euclidian(v[i]->c, v[j]->c) < 10 && v[i]->cluster != v[j]->cluster)
-				//		cout << "lol" << endl;
-			}
 
 			/// Sort so first contour is the largest
 			std::sort(contours.begin(), contours.end(), [&contours](const vector<cv::Point>& a, const vector<cv::Point>& b) {
@@ -256,12 +231,6 @@ int main()
 
 			/// Update objects location or add new
 			updateObjects(objects, contours);
-
-			auto stop = high_resolution_clock::now();
-			auto duration = duration_cast<microseconds>(stop - start);
-
-			cout << "Process time: "
-				<< duration.count() << " microseconds" << endl;
 
 			Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
 
