@@ -103,6 +103,38 @@ inline void removeBySize(vector<vector<Point>> &contours)
 	}), contours.end());
 }
 
+int pnpoly(int nvert, float *vertx, float *verty, float testx, float testy)
+{
+	int i, j, c = 0;
+	for (i = 0, j = nvert - 1; i < nvert; j = i++) {
+		if (((verty[i] > testy) != (verty[j] > testy)) &&
+			(testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i]))
+			c = !c;
+	}
+
+	return c;
+}
+
+int pnpoly(const vector<Point>& c_int, const cv::Point& p_int)
+{
+	int i, j, c = 0;
+
+	vector<Point2f> contour(c_int.size());
+	for (int k = 0; k < c_int.size(); k++)
+		contour[k] = c_int[k];
+
+	Point2f p = p_int;
+
+	for (i = 0, j = contour.size() - 1; i < contour.size(); j = i++) {
+		if (((contour[i].y > p.y) != (contour[j].y > p.y)) &&
+			(p.x < (contour[j].x - contour[i].x) * (p.y - contour[i].y) / (contour[j].y - contour[i].y) + contour[i].x))
+			c = !c;
+	}
+
+	return c;
+}
+
+
 inline void updateObjects(vector<Object>& objects, const vector<vector<Point>>& contours)
 {
 	auto newCentroids = getCentroids(contours);
@@ -223,6 +255,40 @@ int main()
 			/// Fill contours from clusters
 			for (int i = 0; i < v.size(); i++)
 				contours[v[i]->cluster].emplace_back(v[i]->c);
+
+			vector<vector<Point> >hull(contours.size());
+			for (size_t i = 0; i < contours.size(); i++)
+			{
+				convexHull(contours[i], hull[i]);
+			}
+
+			/// check if point inside
+			contours.erase(remove_if(contours.begin(), contours.end(), [&contours, &canny_output](const vector<cv::Point>& value){
+				bool check = false;
+
+					//if (pnpoly(el, value.front()) == 0)
+				for (auto el : contours)
+					if(!el.empty() && pointPolygonTest(el, value.front(), false) == 1)
+					{
+						check = true;
+
+						Mat m = Mat::zeros(canny_output.size(), CV_8UC3);
+
+						//Mat m = Mat::zeros(canny_output.size(), canny_output.type());
+						for (auto p : el)
+							m.at<Vec3b>(p)[0] = m.at<Vec3b>(p)[2]= m.at<Vec3b>(p)[1] = 255;
+
+						for(auto p: value)
+							m.at<Vec3b>(p)[0] = 255;
+
+						imshow("dasd", m);
+						waitKey(0);
+					}
+
+				return check;
+			}), contours.end());
+
+
 
 			/// Sort so first contour is the largest
 			std::sort(contours.begin(), contours.end(), [&contours](const vector<cv::Point>& a, const vector<cv::Point>& b) {
