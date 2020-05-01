@@ -258,34 +258,45 @@ int main()
 
 			vector<vector<Point> >hull(contours.size());
 			for (size_t i = 0; i < contours.size(); i++)
-			{
 				convexHull(contours[i], hull[i]);
-			}
+
+			vector<bool> toDelete(contours.size());
+			for(int i = 0; i< contours.size(); i++)
+				for (int j = 0; j < contours.size(); j++)
+				{
+					if (i == j)
+						continue;
+
+					if (pointPolygonTest(hull[i], hull[j].front(), false) == 1)
+						toDelete[j] = true;
+				}
 
 			/// check if point inside
-			contours.erase(remove_if(contours.begin(), contours.end(), [&contours, &canny_output](const vector<cv::Point>& value){
-				bool check = false;
+			contours.erase(remove_if(contours.begin(), contours.end(), [&contours, &toDelete](const vector<cv::Point>& value){
+				
+				return toDelete[&value - &*contours.begin()];
+				//bool check = false;
 
-					//if (pnpoly(el, value.front()) == 0)
-				for (auto el : contours)
-					if(!el.empty() && pointPolygonTest(el, value.front(), false) == 1)
-					{
-						check = true;
+				//	//if (pnpoly(el, value.front()) == 0)
+				//for (auto el : contours)
+				//	if(!el.empty() && pointPolygonTest(el, value.front(), false) == 1)
+				//	{
+				//		check = true;
 
-						Mat m = Mat::zeros(canny_output.size(), CV_8UC3);
+				//		Mat m = Mat::zeros(canny_output.size(), CV_8UC3);
 
-						//Mat m = Mat::zeros(canny_output.size(), canny_output.type());
-						for (auto p : el)
-							m.at<Vec3b>(p)[0] = m.at<Vec3b>(p)[2]= m.at<Vec3b>(p)[1] = 255;
+				//		//Mat m = Mat::zeros(canny_output.size(), canny_output.type());
+				//		for (auto p : el)
+				//			m.at<Vec3b>(p)[0] = m.at<Vec3b>(p)[2]= m.at<Vec3b>(p)[1] = 255;
 
-						for(auto p: value)
-							m.at<Vec3b>(p)[0] = 255;
+				//		for(auto p: value)
+				//			m.at<Vec3b>(p)[0] = 255;
 
-						imshow("dasd", m);
-						waitKey(0);
-					}
+				//		imshow("dasd", m);
+				//		waitKey(0);
+				//	}
 
-				return check;
+				//return check;
 			}), contours.end());
 
 
