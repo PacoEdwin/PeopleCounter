@@ -106,7 +106,7 @@ inline void removeBySize(vector<vector<Point>> &contours)
 }
 
 /// Hunarian algorithm
-inline void updateObjects1(vector<Object>& objects, const vector<vector<Point>>& contours)
+inline void updateObjects(vector<Object>& objects, const vector<vector<Point>>& contours)
 {
 	auto newCentroids = getCentroids(contours);
 
@@ -204,63 +204,12 @@ inline void updateObjects1(vector<Object>& objects, const vector<vector<Point>>&
 	}
 }
 
-inline void updateObjects(vector<Object>& objects, const vector<vector<Point>>& contours)
-{
-	auto newCentroids = getCentroids(contours);
-	vector<bool> used(newCentroids.size());
-	int removeAfter = -1;
-
-	for (auto &el : objects)
-	{
-		Point closest;
-		int ind = -1;
-		double dist = numeric_limits<double>::max();
-
-		for (int j = 0; j < newCentroids.size(); j++)
-		{
-			double tmp = math::euclidian(newCentroids[j], el.location_);
-			if (!used[j] && tmp < dist)
-			{
-				closest = el.location_;
-				dist = tmp;
-				ind = j;
-			}
-		}
-
-		/// Then we shall remove that point
-		/// There is no new point shall remove old ones
-		if (ind == -1)
-		{
-			removeAfter = &el - &*objects.begin();
-			break;
-		}
-
-		/// Mark as used
-		used[ind] = true;
-		/// Update location location
-		el.location_ = newCentroids[ind];
-	}
-
-	objects.erase(remove_if(objects.begin(), objects.end(), [&removeAfter, &objects](const Object& value) {
-		if (removeAfter == -1)
-			return false;
-
-		return (&value - &*objects.begin()) >= removeAfter;
-	}), objects.end());
-
-	/// Add new objects
-	for (int i = 0; i < used.size(); i++)
-		if (!used[i])
-			objects.emplace_back(newCentroids[i]);
-}
-
 int main()
 {
 	//auto backSub = createBackgroundSubtractorMOG2(500, 200, true);
 	auto backSub = createBackgroundSubtractorKNN(500, 2500, true);
 
 	VideoCapture cap("./fella.mp4");
-	//VideoCapture cap("./fella.mp4");
 	if (!cap.isOpened())
 	{
 		cout << "Couldn't open video" << endl;
@@ -315,7 +264,6 @@ int main()
 			
 			/// Get result of dbscam
 			DBSCANByImage db(canny_output, v);
-			//DBSCAN db(v);
 			db.perform();
 
 			contours.clear();
@@ -325,7 +273,7 @@ int main()
 			for (int i = 0; i < v.size(); i++)
 				contours[v[i]->cluster].emplace_back(v[i]->c);
 
-			vector<vector<Point> >hull(contours.size());
+			vector<vector<Point>> hull(contours.size());
 			for (size_t i = 0; i < contours.size(); i++)
 				convexHull(contours[i], hull[i]);
 
@@ -351,7 +299,8 @@ int main()
 			});
 
 			/// Update objects location or add new
-			updateObjects1(objects, contours);
+			/// Using Hungarian algorithm
+			updateObjects(objects, contours);
 
 			Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
 
