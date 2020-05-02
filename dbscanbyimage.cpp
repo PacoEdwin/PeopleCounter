@@ -8,7 +8,7 @@
 DBSCANByImage::DBSCANByImage(const cv::Mat& img, const std::vector<node*>& data):
 	v_(data),
 	img_(img),
-	neighborhood_(10)
+	neighborhood_(6)
 {
 	m_ = decltype(m_)(img_.rows, std::vector<node*>(img_.cols, nullptr));
 	for (auto el : v_)

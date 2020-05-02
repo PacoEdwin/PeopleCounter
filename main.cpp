@@ -19,6 +19,8 @@ using namespace cv;
 using namespace std;
 using namespace std::chrono;
 
+#define INF(s) std::numeric_limits<s>::max() 
+
 RNG rng(12345);
 
 inline void processFrame(Mat& frame)
@@ -103,37 +105,104 @@ inline void removeBySize(vector<vector<Point>> &contours)
 	}), contours.end());
 }
 
-int pnpoly(int nvert, float *vertx, float *verty, float testx, float testy)
+/// Hunarian algorithm
+inline void updateObjects1(vector<Object>& objects, const vector<vector<Point>>& contours)
 {
-	int i, j, c = 0;
-	for (i = 0, j = nvert - 1; i < nvert; j = i++) {
-		if (((verty[i] > testy) != (verty[j] > testy)) &&
-			(testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i]))
-			c = !c;
+	auto newCentroids = getCentroids(contours);
+
+	vector<bool> newUsed(newCentroids.size());
+	vector<bool> oldUsed(objects.size());
+
+	int n = std::min(newCentroids.size(), objects.size());
+	int m = std::max(newCentroids.size(), objects.size());
+
+	vector<vector<int>> a(n + 1, vector<int>(m + 1));
+
+	if (newCentroids.size() > objects.size())
+	{
+		for (int i = 1; i < n + 1; i++)
+			for (int j = 1; j < m + 1; j++)
+				a[i][j] = math::euclidian(objects[i - 1].location_, newCentroids[j - 1]);
+	}
+	else
+	{
+		for (int i = 1; i < n + 1; i++)
+			for (int j = 1; j < m + 1; j++)
+				a[i][j] = math::euclidian(objects[j - 1].location_, newCentroids[i - 1]);
 	}
 
-	return c;
-}
+	vector<int> u(n + 1), v(m + 1), p(m + 1), way(m + 1);
+	for (int i = 1; i <= n; ++i)
+	{
+		p[0] = i;
+		int j0 = 0;
+		vector<int> minv(m + 1, INF(int));
+		vector<char> used(m + 1, false);
 
-int pnpoly(const vector<Point>& c_int, const cv::Point& p_int)
-{
-	int i, j, c = 0;
+		do {
+			used[j0] = true;
+			int i0 = p[j0], delta = INF(int), j1;
 
-	vector<Point2f> contour(c_int.size());
-	for (int k = 0; k < c_int.size(); k++)
-		contour[k] = c_int[k];
+			for (int j = 1; j <= m; ++j)
+				if (!used[j])
+				{
+					int cur = a[i0][j] - u[i0] - v[j];
+					if (cur < minv[j])
+						minv[j] = cur, way[j] = j0;
+					if (minv[j] < delta)
+						delta = minv[j], j1 = j;
+				}
 
-	Point2f p = p_int;
+			for (int j = 0; j <= m; ++j)
+				if (used[j])
+					u[p[j]] += delta, v[j] -= delta;
+				else
+					minv[j] -= delta;
 
-	for (i = 0, j = contour.size() - 1; i < contour.size(); j = i++) {
-		if (((contour[i].y > p.y) != (contour[j].y > p.y)) &&
-			(p.x < (contour[j].x - contour[i].x) * (p.y - contour[i].y) / (contour[j].y - contour[i].y) + contour[i].x))
-			c = !c;
+			j0 = j1;
+		} while (p[j0] != 0);
+
+		do
+		{
+			int j1 = way[j0];
+			p[j0] = p[j1];
+			j0 = j1;
+		} while (j0);
 	}
 
-	return c;
-}
+	vector<int> ans(n + 1);
+	for (int j = 1; j <= m; ++j)
+		ans[p[j]] = j;
 
+	if (newCentroids.size() > objects.size())
+	{
+		for (int i = 1; i < n + 1; i++)
+		{
+			/// Presumably ans[i] never 0 
+			if (!ans[i] == 0)
+			{
+				objects[i - 1].location_ = newCentroids[ans[i] - 1];
+				newUsed[ans[i] - 1] = true;
+			}
+		}
+
+		for (int i = 0; i < m; i++)
+			if (!newUsed[i])
+				objects.emplace_back(newCentroids[i]);
+	}
+	else
+	{
+		for (int i = 1; i < n + 1; i++)
+		{
+			objects[ans[i] - 1].location_ = newCentroids[i - 1];
+			oldUsed[ans[i] - 1] = true;
+		}
+
+		objects.erase(remove_if(objects.begin(), objects.end(), [&objects, &oldUsed](const Object& value) {
+			return !oldUsed[&value - &*objects.begin()];
+		}), objects.end());
+	}
+}
 
 inline void updateObjects(vector<Object>& objects, const vector<vector<Point>>& contours)
 {
@@ -188,9 +257,9 @@ inline void updateObjects(vector<Object>& objects, const vector<vector<Point>>& 
 int main()
 {
 	//auto backSub = createBackgroundSubtractorMOG2(500, 200, true);
-	auto backSub = createBackgroundSubtractorKNN(500, 2500/*2500*/, true);
+	auto backSub = createBackgroundSubtractorKNN(500, 2500, true);
 
-	VideoCapture cap("./doorWay.mp4");
+	VideoCapture cap("./fella.mp4");
 	//VideoCapture cap("./fella.mp4");
 	if (!cap.isOpened())
 	{
@@ -273,33 +342,8 @@ int main()
 
 			/// check if point inside
 			contours.erase(remove_if(contours.begin(), contours.end(), [&contours, &toDelete](const vector<cv::Point>& value){
-				
 				return toDelete[&value - &*contours.begin()];
-				//bool check = false;
-
-				//	//if (pnpoly(el, value.front()) == 0)
-				//for (auto el : contours)
-				//	if(!el.empty() && pointPolygonTest(el, value.front(), false) == 1)
-				//	{
-				//		check = true;
-
-				//		Mat m = Mat::zeros(canny_output.size(), CV_8UC3);
-
-				//		//Mat m = Mat::zeros(canny_output.size(), canny_output.type());
-				//		for (auto p : el)
-				//			m.at<Vec3b>(p)[0] = m.at<Vec3b>(p)[2]= m.at<Vec3b>(p)[1] = 255;
-
-				//		for(auto p: value)
-				//			m.at<Vec3b>(p)[0] = 255;
-
-				//		imshow("dasd", m);
-				//		waitKey(0);
-				//	}
-
-				//return check;
 			}), contours.end());
-
-
 
 			/// Sort so first contour is the largest
 			std::sort(contours.begin(), contours.end(), [&contours](const vector<cv::Point>& a, const vector<cv::Point>& b) {
@@ -307,7 +351,7 @@ int main()
 			});
 
 			/// Update objects location or add new
-			updateObjects(objects, contours);
+			updateObjects1(objects, contours);
 
 			Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
 
