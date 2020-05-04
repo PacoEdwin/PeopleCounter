@@ -1,44 +1,41 @@
-// projects includes
-#include "DBSCAN.h"
+// project includes
+#include "dbscan.h"
 
 // std includes
 #include <queue>
+#include <iostream>
 
-DBSCAN::DBSCAN(const std::vector<node*>& data):
-	v_(data), 
-	neighborhood_(10) {}
-
-void DBSCAN::perform()
+DBSCAN::DBSCAN(const cv::Mat& img, const std::vector<node*>& data) :
+	v_(data),
+	img_(img),
+	neighborhood_(6)
 {
-	while(!v_.empty())
-	{
-		auto el = v_[0];
-		if (el->color == "white")
-		{
-			el->cluster = graphs_.size();
-			graphs_.resize(graphs_.size() + 1);
-			//v_.erase(v_.begin());
-			clusteringBFS(el);
-		}
-	}
-
-	numOfClusters_ = graphs_.size();
+	m_ = decltype(m_)(img_.rows, std::vector<node*>(img_.cols, nullptr));
+	for (auto el : v_)
+		m_[el->c.y][el->c.x] = el;
 }
 
 DBSCAN::~DBSCAN()
 {
 	for (auto& cluster : graphs_)
 		for (auto& edges : cluster)
-			for (auto& el : edges)
+			for (auto el : edges)
 				delete el;
 }
 
-Clusters DBSCAN::result()
+void DBSCAN::perform()
 {
-	if (graphs_.empty())
-		perform();
+	for (auto el : v_)
+	{
+		if (el->color == "white")
+		{
+			el->cluster = graphs_.size();
+			graphs_.push_back(std::vector<std::vector<edge*>>());
+			clustering(el);
+		}
+	}
 
-	return graphs_;
+	numOfClusters_ = graphs_.size();
 }
 
 uint32_t DBSCAN::numberOfClusters() const
@@ -46,7 +43,26 @@ uint32_t DBSCAN::numberOfClusters() const
 	return numOfClusters_;
 }
 
-void DBSCAN::clusteringBFS(node* s)
+
+std::vector<node*> DBSCAN::getNeighbors(node* v) const
+{
+	std::vector<node*> output;
+
+	int x = std::max(v->c.x - neighborhood_, 0);
+	int y = std::max(v->c.y - neighborhood_, 0);
+
+	int x_m = std::min(img_.cols - 1, v->c.x + neighborhood_);
+	int y_m = std::min(img_.rows - 1, v->c.y + neighborhood_);
+
+	for (int j = y; j <= y_m; j++)
+		for (int i = x; i <= x_m; i++)
+			if (m_[j][i] && m_[j][i]->color == "white" && m_[j][i] != v)
+				output.push_back(m_[j][i]);
+
+	return output;
+}
+
+void DBSCAN::clustering(node* s)
 {
 	std::queue<node*> q;
 	q.push(s);
@@ -57,111 +73,41 @@ void DBSCAN::clusteringBFS(node* s)
 		auto u = q.front();
 		q.pop();
 
-		int i = 0;
-		int j = v_.size();
-		while(i != j)
+		auto neighbors = getNeighbors(u);
+
+		for (auto el : neighbors)
 		{
-			auto &el = v_[i];
-			// don't init some isolated shit
-			if (el->color == "white")
-			{
-				double dist = math::euclidian(el->c, u->c);
-				if (std::abs(el->c.x - u->c.x) < neighborhood_ && std::abs(el->c.y - u->c.y) < neighborhood_ && el != u)
-				{
-
-					edge* r = new edge;
-					edge* w = new edge;
-
-					// init edges
-					{
-						el->ancestor = u;
-						r->link = el;
-						w->link = u;
-						r->w = dist;
-						w->w = dist;
-						r->link->cluster = w->link->cluster = u->cluster;
-					}
-
-					if (graphs_[graphs_.size() - 1].size() == 0)
-					{
-						graphs_[graphs_.size() - 1].push_back(std::vector<edge*>());
-						w->link->pos = 0;
-					}
-
-					graphs_[u->cluster][u->pos].push_back(r);
-					graphs_[u->cluster].push_back(std::vector<edge*>());
-					el->pos = graphs_[u->cluster].size() - 1;
-					graphs_[u->cluster][el->pos].push_back(w);
-
-					q.push(el);
-
-					el->color = "gray";
-				}
-				else
-					i++;
-			}
-			else
-			{
-				j--;
-				std::swap(v_[i], v_[j]);
-			}
-
-			u->color = "black";
-		}
-
-		v_.resize(j);
-	}
-}
-
-// kinda dfs
-void DBSCAN::clustering(node* u)
-{
-	u->color = "gray";
-
-	bool hasNeighbor = false;
-
-	for (int i = 0; i < v_.size(); i++)
-	{
-		double dist = math::euclidian(v_[i]->c, u->c);
-
-		// don't init some isolated shit
-		if (v_[i]->color == "white" && dist < neighborhood_ && v_[i] != u)
-		{
-			hasNeighbor = true;
+			double dist = math::euclidian(el->c, u->c);
 
 			edge* r = new edge;
 			edge* w = new edge;
 
 			// init edges
 			{
-				v_[i]->ancestor = u;
-				r->link = v_[i];
+				el->ancestor = u;
+				r->link = el;
 				w->link = u;
 				r->w = dist;
 				w->w = dist;
-				r->link->cluster = u->cluster;
+				r->link->cluster = w->link->cluster = u->cluster;
 			}
 
 			if (graphs_[graphs_.size() - 1].size() == 0)
 			{
+				graphs_[graphs_.size() - 1].push_back(std::vector<edge*>());
 				w->link->pos = 0;
-				r->link->pos = 1;
-				graphs_[graphs_.size() - 1].resize(2);
-				graphs_[graphs_.size() - 1][w->link->pos].push_back(r);
-				graphs_[graphs_.size() - 1][r->link->pos].push_back(w);
-			}
-			else
-			{
-				// add edges
-				graphs_[u->cluster][u->pos].push_back(r);
-				graphs_[u->cluster].resize(graphs_[u->cluster].size() + 1);
-				v_[i]->pos = graphs_[u->cluster].size() - 1;
-				graphs_[u->cluster][v_[i]->pos].push_back(w);
 			}
 
-			clustering(v_[i]);
+			graphs_[u->cluster][u->pos].push_back(r);
+			graphs_[u->cluster].push_back(std::vector<edge*>());
+			el->pos = graphs_[u->cluster].size() - 1;
+			graphs_[u->cluster][el->pos].push_back(w);
+
+			q.push(el);
+
+			el->color = "gray";
 		}
-	}
 
-	u->color = "black";
+		u->color = "black";
+	}
 }

@@ -1,7 +1,7 @@
 ﻿// rpoject includes
 #include "DBSCAN.h"
 #include "Object.h"
-#include "dbscanbyimage.h"
+//#include "dbscanbyimage.h"
 // opencv includes
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -263,7 +263,7 @@ int main()
 				v.push_back(it->second);
 			
 			/// Get result of dbscam
-			DBSCANByImage db(canny_output, v);
+			DBSCAN db(canny_output, v);
 			db.perform();
 
 			contours.clear();
