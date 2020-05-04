@@ -1,5 +1,6 @@
 // project includes
 #include "dbscan.h"
+#include "tools.h"
 
 // std includes
 #include <queue>
