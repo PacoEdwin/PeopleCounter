@@ -20,7 +20,7 @@ Object::Object()
 	color_ = cv::Scalar(dis(gen), dis(gen), dis(gen));
 }
 
-Object::Object(const cv::Point& value):
+Object::Object(const cv::Point& value) :
 	location_(value)
 {
 	std::random_device rd;  //Will be used to obtain a seed for the random number engine
@@ -30,9 +30,6 @@ Object::Object(const cv::Point& value):
 	id_ = dis(gen);
 	dis = std::uniform_int_distribution<>(0, 255);
 	color_ = cv::Scalar(dis(gen), dis(gen), dis(gen));
-	//cv::RNG rng;
-	//id_ = rng.uniform(0, std::numeric_limits<int>::max());
-	//color_ = cv::Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
 }
 
 Object::Object(const Object& rhs):

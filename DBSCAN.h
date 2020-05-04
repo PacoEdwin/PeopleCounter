@@ -19,7 +19,6 @@ private:
 	// maybe rewrite using dfs
 	void clustering(node*);
 	std::vector<node*> getNeighbors(node*) const;
-	void clusteringBFS(node*);
 
 	// vertices of graph
 	int neighborhood_;

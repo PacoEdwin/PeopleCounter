@@ -7,13 +7,14 @@ class Object
 {
 public:
 	Object();
-	Object(const cv::Point&);
 	Object(const Object&);
+	Object(const cv::Point&);
 
 	int id() const;
 
 	cv::Point location_;
 	cv::Scalar color_;
+
 private:
 	int id_;
 };

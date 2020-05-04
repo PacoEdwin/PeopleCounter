@@ -124,13 +124,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DBSCAN.cpp" />
-    <ClCompile Include="dbscanbyimage.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Object.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DBSCAN.h" />
-    <ClInclude Include="dbscanbyimage.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="Object.h" />
   </ItemGroup>
