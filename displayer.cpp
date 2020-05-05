@@ -10,14 +10,37 @@ void Displayer::setImage(const cv::Mat& value)
 	m_image = value;
 }
 
-void Displayer::drawContours(const Objects& objects, const Contours& contours )
+void Displayer::setFrameProcessor(FrameProcessor* value)
 {
-	for (int i = 0; i < contours.size(); i++)
-		cv::drawContours(m_image, contours, i, objects[i].color_, 2, 8, cv::noArray(), 0, cv::Point());
+	m_frameProcessor = value;
 }
 
-void Displayer::drawBoundingBox(const Objects& objects, const Contours& contours)
+void Displayer::drawContours()
 {
+	if (m_image.empty())
+	{
+		std::cout << "Image is not set" << std::endl;
+		return;
+	}
+
+	auto objects = m_frameProcessor->tracker()->objects();
+	auto contours = m_frameProcessor->extractor()->contours();
+
+	for (int i = 0; i < contours.size(); i++)
+		cv::drawContours(m_image, contours, i, objects[i].m_color, 2, 8, cv::noArray(), 0, cv::Point());
+}
+
+void Displayer::drawBoundingBox()
+{
+	if (m_image.empty())
+	{
+		std::cout << "Image is not set" << std::endl;
+		return;
+	}
+
+	auto objects = m_frameProcessor->tracker()->objects();
+	auto contours = m_frameProcessor->extractor()->contours();
+
 	for (int i = 0; i < objects.size(); i++)
 	{
 		cv::Point minCorner = { m_image.cols, m_image.rows };
@@ -34,11 +57,17 @@ void Displayer::drawBoundingBox(const Objects& objects, const Contours& contours
 
 		cv::Rect rect(minCorner, maxCorner);
 		cv::rectangle(m_image, rect, { 255, 255, 255 });
-		cv::putText(m_image, std::to_string(objects[i].id()), objects[i].location_, cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
+		cv::putText(m_image, std::to_string(objects[i].name()), objects[i].m_location, cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
 	}
 }
 
 void Displayer::display(std::string name) const
 {
+	if (m_image.empty())
+	{
+		std::cout << "Image is not set" << std::endl;
+		return;
+	}
+
 	cv::imshow(name, m_image);
 }

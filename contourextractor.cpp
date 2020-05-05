@@ -17,9 +17,9 @@ ContourExtractor::ContourExtractor(const cv::Mat& mask):
 	m_threshold1(250),
 	m_threshold2(900) {}
 
-void ContourExtractor::removeBySize(std::vector<std::vector<cv::Point>> &contours) const
+void ContourExtractor::removeBySize()
 {
-	contours.erase(std::remove_if(contours.begin(), contours.end(), [](const std::vector<cv::Point>& el) ->bool {
+	m_contours.erase(std::remove_if(m_contours.begin(), m_contours.end(), [](const Contour& el) -> bool {
 		cv::Point centroid;
 		for (auto p : el)
 			centroid += p;
@@ -32,10 +32,10 @@ void ContourExtractor::removeBySize(std::vector<std::vector<cv::Point>> &contour
 				return false;
 
 		return true;
-	}), contours.end());
+	}), m_contours.end());
 }
 
-void ContourExtractor::removeChildContours(const std::vector<cv::Vec4i>& hierarchy, std::vector<std::vector<cv::Point>> &contours) const
+void ContourExtractor::removeChildContours(const std::vector<cv::Vec4i>& hierarchy)
 {
 	std::vector<std::vector<cv::Point>> tmpContours;
 	std::vector<bool> displayed(hierarchy.size());
@@ -48,7 +48,7 @@ void ContourExtractor::removeChildContours(const std::vector<cv::Vec4i>& hierarc
 		// shall display and mark as displayed
 		if (current == -1)
 		{
-			tmpContours.push_back(contours[i]);
+			tmpContours.push_back(m_contours[i]);
 			displayed[i] = true;
 			continue;
 		}
@@ -59,34 +59,34 @@ void ContourExtractor::removeChildContours(const std::vector<cv::Vec4i>& hierarc
 
 		if (!displayed[current])
 		{
-			tmpContours.push_back(contours[current]);
+			tmpContours.push_back(m_contours[current]);
 			displayed[current] = true;
 		}
 	}
 
 	// maybe make contours as list or use erase-remove idiom
-	contours = tmpContours;
+	m_contours = tmpContours;
 }
 
-std::vector<std::vector<cv::Point>> ContourExtractor::extractContours() const
+Contours ContourExtractor::extractContours()
 {
+	m_contours.clear();
 	cv::Mat canny_output;
 	std::vector<cv::Vec4i> hierarchy;
-	std::vector<std::vector<cv::Point>> contours;
 
 	/// Detect edges using canny
 	cv::Canny(m_mask, canny_output, m_threshold1, m_threshold2, m_apertureSize);
 	/// Find contours
-	cv::findContours(canny_output, contours, hierarchy, cv::RETR_TREE, 1, cv::Point(0, 0));
+	cv::findContours(canny_output, m_contours, hierarchy, cv::RETR_TREE, 1, cv::Point(0, 0));
 	/// Leave only outer contours
-	removeChildContours(hierarchy, contours);
+	removeChildContours(hierarchy);
 	/// Exclude countours whose size is less than 100
-	removeBySize(contours);
+	removeBySize();
 	/// Init vector of nodes for DBSCAN
 	std::vector<node*> v;
 	std::unordered_map<int, node*> h;
 
-	for (auto &el : contours)
+	for (auto &el : m_contours)
 	{
 		for (cv::Point &p : el)
 		{
@@ -105,20 +105,20 @@ std::vector<std::vector<cv::Point>> ContourExtractor::extractContours() const
 	DBSCAN db(canny_output, v);
 	db.perform();
 
-	contours.clear();
-	contours.resize(db.numberOfClusters());
+	m_contours.clear();
+	m_contours.resize(db.numberOfClusters());
 
 	/// Fill contours from clusters
 	for (int i = 0; i < v.size(); i++)
-		contours[v[i]->cluster].emplace_back(v[i]->c);
+		m_contours[v[i]->cluster].emplace_back(v[i]->c);
 
-	std::vector<std::vector<cv::Point>> hull(contours.size());
-	for (size_t i = 0; i < contours.size(); i++)
-		convexHull(contours[i], hull[i]);
+	std::vector<std::vector<cv::Point>> hull(m_contours.size());
+	for (size_t i = 0; i < m_contours.size(); i++)
+		convexHull(m_contours[i], hull[i]);
 
-	std::vector<bool> toDelete(contours.size());
-	for (int i = 0; i < contours.size(); i++)
-		for (int j = 0; j < contours.size(); j++)
+	std::vector<bool> toDelete(m_contours.size());
+	for (int i = 0; i < m_contours.size(); i++)
+		for (int j = 0; j < m_contours.size(); j++)
 		{
 			if (i == j)
 				continue;
@@ -128,14 +128,19 @@ std::vector<std::vector<cv::Point>> ContourExtractor::extractContours() const
 		}
 
 	/// check if point inside
-	contours.erase(remove_if(contours.begin(), contours.end(), [&contours, &toDelete](const std::vector<cv::Point>& value) {
-		return toDelete[&value - &*contours.begin()];
-	}), contours.end());
+	m_contours.erase(remove_if(m_contours.begin(), m_contours.end(), [this, &toDelete](const std::vector<cv::Point>& value) {
+		return toDelete[&value - &*m_contours.begin()];
+	}), m_contours.end());
 
-	return contours;
+	return m_contours;
 }
 
 void ContourExtractor::setMask(const cv::Mat& value)
 {
 	m_mask = value;
+}
+
+Contours ContourExtractor::contours() const
+{
+	return m_contours;
 }

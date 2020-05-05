@@ -3,6 +3,7 @@
 // project includes
 #include "types.h"
 #include "Object.h"
+#include "frameprocessor.h"
 
 // std includes
 #include <string>
@@ -19,11 +20,13 @@ public:
 	Displayer(const cv::Mat&);
 
 	void setImage(const cv::Mat&);
+	void setFrameProcessor(FrameProcessor* value);
 
-	void drawContours(const Objects&, const Contours&);
-	void drawBoundingBox(const Objects&, const Contours&);
+	void drawContours();
+	void drawBoundingBox();
 	void display(std::string name = "contours") const;
 
 private:
 	cv::Mat m_image;
+	FrameProcessor* m_frameProcessor = nullptr;
 };

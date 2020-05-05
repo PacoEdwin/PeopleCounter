@@ -2,9 +2,11 @@
 // std includes
 #include <vector>
 
+// project includes
+#include "types.h"
+
 // cv includes
 #include <opencv2/opencv.hpp>
-#include <opencv2/core/types.hpp>
 
 class ContourExtractor
 {
@@ -13,15 +15,16 @@ public:
 	ContourExtractor();
 	ContourExtractor(const cv::Mat&);
 
-	std::vector<std::vector<cv::Point>> extractContours() const;
+	Contours contours() const;
+	Contours extractContours();
 	void setMask(const cv::Mat&);
 
 private:
-	void removeBySize(std::vector<std::vector<cv::Point>> &contours) const;
-	void removeChildContours(const std::vector<cv::Vec4i>& hierarchy, std::vector<std::vector<cv::Point>> &contours) const;
+	void removeBySize();
+	void removeChildContours(const std::vector<cv::Vec4i>& hierarchy);
 
 	cv::Mat m_mask;
-
+	Contours m_contours;
 	// TODO: add setters and getters
 	int	m_apertureSize;
 	double 	m_threshold1;

@@ -4,8 +4,8 @@
 #include <vector>
 #include <limits>
 
-// cv includes
-#include <opencv2/core/types.hpp>
+// project includes
+#include "types.h"
 
 #define INF(s) std::numeric_limits<s>::max() 
 
@@ -20,22 +20,22 @@ namespace math
 	{
 		return euclidian(p1.x, p1.y, p2.x, p2.y);
 	}
-}
 
-inline std::vector<cv::Point> getCentroids(const std::vector<std::vector<cv::Point>>& contours)
-{
-	std::vector<cv::Point> output;
-
-	for (auto &el : contours)
+	inline std::vector<cv::Point> getCentroids(const Contours& contours)
 	{
-		cv::Point centroid;
-		for (auto &v : el)
-			centroid += v;
+		std::vector<cv::Point> output;
 
-		centroid.x = centroid.x / el.size();
-		centroid.y = centroid.y / el.size();
-		output.push_back(centroid);
+		for (const Contour &el: contours)
+		{
+			cv::Point centroid;
+			for (auto &v : el)
+				centroid += v;
+
+			centroid.x = centroid.x / el.size();
+			centroid.y = centroid.y / el.size();
+			output.push_back(centroid);
+		}
+
+		return output;
 	}
-
-	return output;
 }

@@ -2,8 +2,7 @@
 #include "tools.h"
 #include "DBSCAN.h"
 #include "displayer.h"
-#include "objecttracker.h"
-#include "contourextractor.h"
+#include "frameprocessor.h"
 
 // opencv includes
 #include <opencv2/video.hpp>
@@ -25,8 +24,6 @@ inline void processFrame(Mat& frame)
 
 int main()
 {
-	auto backSub = createBackgroundSubtractorKNN(500, 2500, true);
-
 	VideoCapture cap("./PeopleCounter/doorWay.mp4");
 	if (!cap.isOpened())
 	{
@@ -35,10 +32,11 @@ int main()
 	}
 
 	int counter = 0;
-	Mat frame, mask;
+	Mat frame;
 
-	ObjectTracker tracker;
+	FrameProcessor* processor = new FrameProcessor();
 	Displayer displayer;
+	displayer.setFrameProcessor(processor);
 
 	while (cap.isOpened())
 	{
@@ -47,26 +45,18 @@ int main()
 		if (frame.empty())
 			break;
 
-		backSub->apply(frame, mask);
+		processor->process(frame);
 
-		/// Process
+		/// display
 		{
-			ContourExtractor extractor(mask);
-			Contours contours = extractor.extractContours();
-
-			tracker.update(contours);
-			Objects objects = tracker.objects();
-
+			// Maybe nees init function
 			Mat drawing = Mat::zeros(frame.size(), CV_8UC3);
 			displayer.setImage(drawing);
-			displayer.drawContours(objects, contours);
-			displayer.drawBoundingBox(objects, contours);
+			displayer.drawContours();
+			displayer.drawBoundingBox();
 
 			displayer.display();
 		}
-
-		Mat back;
-		backSub->getBackgroundImage(back);
 
 		processFrame(frame);
 

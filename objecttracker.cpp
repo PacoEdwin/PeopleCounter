@@ -1,8 +1,9 @@
 // project include
-#include "objecttracker.h"
 #include "tools.h"
+#include "objecttracker.h"
 
 // std includes
+#include <iostream>
 #include <algorithm>
 
 std::vector<Object> ObjectTracker::objects() const
@@ -10,12 +11,9 @@ std::vector<Object> ObjectTracker::objects() const
 	return m_objects;
 }
 
-void ObjectTracker::update(const std::vector<std::vector<cv::Point>>& contours)
+void ObjectTracker::update(const Contours& contours)
 {
-	auto newCentroids = getCentroids(contours);
-
-	std::vector<bool> newUsed(newCentroids.size());
-	std::vector<bool> oldUsed(m_objects.size());
+	auto newCentroids = math::getCentroids(contours);
 
 	int n = std::min(newCentroids.size(), m_objects.size());
 	int m = std::max(newCentroids.size(), m_objects.size());
@@ -26,13 +24,13 @@ void ObjectTracker::update(const std::vector<std::vector<cv::Point>>& contours)
 	{
 		for (int i = 1; i < n + 1; i++)
 			for (int j = 1; j < m + 1; j++)
-				a[i][j] = math::euclidian(m_objects[i - 1].location_, newCentroids[j - 1]);
+				a[i][j] = math::euclidian(m_objects[i - 1].m_location, newCentroids[j - 1]);
 	}
 	else
 	{
 		for (int i = 1; i < n + 1; i++)
 			for (int j = 1; j < m + 1; j++)
-				a[i][j] = math::euclidian(m_objects[j - 1].location_, newCentroids[i - 1]);
+				a[i][j] = math::euclidian(m_objects[j - 1].m_location, newCentroids[i - 1]);
 	}
 
 	std::vector<int> u(n + 1), v(m + 1), p(m + 1), way(m + 1);
@@ -80,30 +78,47 @@ void ObjectTracker::update(const std::vector<std::vector<cv::Point>>& contours)
 
 	if (newCentroids.size() > m_objects.size())
 	{
+		std::vector<bool> newUsed(newCentroids.size());
 		for (int i = 1; i < n + 1; i++)
 		{
-			/// Presumably ans[i] never 0 
-			if (!ans[i] == 0)
-			{
-				m_objects[i - 1].location_ = newCentroids[ans[i] - 1];
-				newUsed[ans[i] - 1] = true;
-			}
+			m_objects[i - 1].m_location = newCentroids[ans[i] - 1];
+			newUsed[ans[i] - 1] = true;
 		}
 
 		for (int i = 0; i < m; i++)
 			if (!newUsed[i])
+			{
 				m_objects.emplace_back(newCentroids[i]);
+				m_numOfObjects++;
+				m_objects.back().setName(m_numOfObjects);
+			}
 	}
 	else
 	{
+		std::vector<bool> oldUsed(m_objects.size());
 		for (int i = 1; i < n + 1; i++)
 		{
-			m_objects[ans[i] - 1].location_ = newCentroids[i - 1];
+			m_objects[ans[i] - 1].m_location = newCentroids[i - 1];
 			oldUsed[ans[i] - 1] = true;
 		}
 
-		m_objects.erase(remove_if(m_objects.begin(), m_objects.end(), [this, &oldUsed](const Object& value) {
-			return !oldUsed[&value - &*m_objects.begin()];
+		std::vector<int> removedInd;
+
+		m_objects.erase(remove_if(m_objects.begin(), m_objects.end(), [this, &removedInd, &oldUsed](const Object& value) {
+			bool output = oldUsed[&value - &*m_objects.begin()];
+			if (!output)
+				removedInd.push_back(&value - &*m_objects.begin());
+
+			return !output;
 		}), m_objects.end());
+
+		m_numOfObjects = m_objects.size();
+
+		if (!removedInd.empty())
+		{
+			// use removeInd in future
+			for (int i = 0; i < m_objects.size(); i++)
+				m_objects[i].setName(i + 1);
+		}
 	}
 }

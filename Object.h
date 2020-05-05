@@ -2,6 +2,7 @@
 
 // std includes
 #include <vector>
+#include <string>
 
 // cv includes
 #include <opencv2/core/types.hpp>
@@ -15,11 +16,15 @@ public:
 
 	int id() const;
 
-	cv::Point location_;
-	cv::Scalar color_;
+	uint name() const;
+	void setName(uint);
+
+	cv::Point m_location;
+	cv::Scalar m_color;
 
 private:
-	int id_;
+	int m_id;
+	uint m_name;
 };
 
 typedef std::vector<Object> Objects;
