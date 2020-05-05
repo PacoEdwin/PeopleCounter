@@ -1,5 +1,8 @@
 #pragma once
 
+// std includes
+#include <vector>
+
 // cv includes
 #include <opencv2/core/types.hpp>
 
@@ -18,3 +21,5 @@ public:
 private:
 	int id_;
 };
+
+typedef std::vector<Object> Objects;

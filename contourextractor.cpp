@@ -131,6 +131,8 @@ std::vector<std::vector<cv::Point>> ContourExtractor::extractContours() const
 	contours.erase(remove_if(contours.begin(), contours.end(), [&contours, &toDelete](const std::vector<cv::Point>& value) {
 		return toDelete[&value - &*contours.begin()];
 	}), contours.end());
+
+	return contours;
 }
 
 void ContourExtractor::setMask(const cv::Mat& value)
