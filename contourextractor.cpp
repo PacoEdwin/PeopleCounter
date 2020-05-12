@@ -19,7 +19,7 @@ ContourExtractor::ContourExtractor(const cv::Mat& mask):
 
 void ContourExtractor::removeBySize()
 {
-	m_contours.erase(std::remove_if(m_contours.begin(), m_contours.end(), [](const Contour& el) -> bool {
+	m_contours.erase(std::remove_if(m_contours.begin(), m_contours.end(), [this](const Contour& el) -> bool {
 		cv::Point centroid;
 		for (auto p : el)
 			centroid += p;
@@ -28,7 +28,7 @@ void ContourExtractor::removeBySize()
 		centroid.y = centroid.y / el.size();
 
 		for (auto p : el)
-			if (math::euclidian(centroid, p) > 5)
+			if (math::euclidian(centroid, p) > m_radius)
 				return false;
 
 		return true;
@@ -111,6 +111,13 @@ Contours ContourExtractor::extractContours()
 	/// Fill contours from clusters
 	for (int i = 0; i < v.size(); i++)
 		m_contours[v[i]->cluster].emplace_back(v[i]->c);
+
+	m_radius = 30;
+	removeBySize();
+	m_radius = 5;
+
+	for (Contour& el : m_contours)
+		std::cout << el.size() << std::endl;
 
 	std::vector<std::vector<cv::Point>> hull(m_contours.size());
 	for (size_t i = 0; i < m_contours.size(); i++)

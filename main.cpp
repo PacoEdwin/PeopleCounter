@@ -22,6 +22,11 @@ inline void processFrame(Mat& frame)
 	cv::line(frame, Point(frame.cols / 2, 0), Point(frame.cols / 2, frame.rows), Scalar(0, 255, 0), 2);
 }
 
+inline void drawCircle(cv::Mat& value)
+{
+	cv::circle(value, cv::Point(value.cols/2, value.rows/2), 30, Scalar(0, 0, 255), 1);
+}
+
 int main()
 {
 	VideoCapture cap("./PeopleCounter/doorWay.mp4");

@@ -30,6 +30,7 @@ void FrameProcessor::process(const cv::Mat& frame)
 	cv::Mat mask;
 	m_backSub->apply(frame, mask);
 	
+	// move ContourExtractor in ObjectTracker
 	m_extractor->setMask(mask);
 	Contours contours = m_extractor->extractContours();
 

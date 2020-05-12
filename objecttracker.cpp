@@ -6,9 +6,45 @@
 #include <iostream>
 #include <algorithm>
 
+int ObjectTracker::totalLeft() const
+{
+	return m_totalLeft;
+}
+
+int ObjectTracker::totalRight() const
+{
+	return m_totalRight;
+}
+
 std::vector<Object> ObjectTracker::objects() const
 {
 	return m_objects;
+}
+
+void ObjectTracker::registerObject(const Object& object)
+{
+	m_trackableObject[object.id()].push_back(object.m_location);
+}
+
+void ObjectTracker::deregisterObject(const Object& object)
+{
+	auto history = m_trackableObject[object.id()];
+	
+	int first = history.front().y;
+	int last = history.back().y;
+	int direction = first - last;
+	int min = std::min(first, last);
+	int max = std::max(first, last);
+
+	if (min < 120 && max > 120)
+	{
+		if (direction > 0)
+			m_totalLeft++;
+		else
+			m_totalRight++;
+
+		std::cout << m_totalLeft << " " << m_totalRight << std::endl;
+	}
 }
 
 void ObjectTracker::update(const Contours& contours)
@@ -82,6 +118,7 @@ void ObjectTracker::update(const Contours& contours)
 		for (int i = 1; i < n + 1; i++)
 		{
 			m_objects[i - 1].m_location = newCentroids[ans[i] - 1];
+			m_trackableObject[m_objects[i - 1].id()].push_back(newCentroids[ans[i] - 1]);
 			newUsed[ans[i] - 1] = true;
 		}
 
@@ -91,6 +128,7 @@ void ObjectTracker::update(const Contours& contours)
 				m_objects.emplace_back(newCentroids[i]);
 				m_numOfObjects++;
 				m_objects.back().setName(m_numOfObjects);
+				registerObject(m_objects.back());
 			}
 	}
 	else
@@ -107,7 +145,10 @@ void ObjectTracker::update(const Contours& contours)
 		m_objects.erase(remove_if(m_objects.begin(), m_objects.end(), [this, &removedInd, &oldUsed](const Object& value) {
 			bool output = oldUsed[&value - &*m_objects.begin()];
 			if (!output)
+			{
 				removedInd.push_back(&value - &*m_objects.begin());
+				this->deregisterObject(value);
+			}
 
 			return !output;
 		}), m_objects.end());

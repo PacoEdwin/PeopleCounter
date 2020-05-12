@@ -26,6 +26,7 @@ private:
 	cv::Mat m_mask;
 	Contours m_contours;
 	// TODO: add setters and getters
+	int m_radius = 5;
 	int	m_apertureSize;
 	double 	m_threshold1;
 	double 	m_threshold2;
